@@ -1,3 +1,4 @@
+mod physics;
 mod platform;
 
 use platform::PetWindowOs;

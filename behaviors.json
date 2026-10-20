@@ -1,0 +1,22 @@
+{
+  "floor": [
+    { "action": "stand", "weight": 3, "min_seconds": 1.0, "max_seconds": 2.5 },
+    { "action": "walk", "weight": 5, "min_seconds": 1.5, "max_seconds": 4.0 },
+    { "action": "run", "weight": 1, "min_seconds": 1.0, "max_seconds": 2.0 },
+    { "action": "sit", "weight": 2, "min_seconds": 2.0, "max_seconds": 5.0 },
+    { "action": "sleep", "weight": 1, "min_seconds": 4.0, "max_seconds": 8.0 },
+    { "action": "walk_to_wall", "weight": 2, "min_seconds": 1.5, "max_seconds": 4.0 }
+  ],
+  "wall": [
+    { "action": "climb_up", "weight": 3, "min_seconds": 1.0, "max_seconds": 2.5 },
+    { "action": "climb_down", "weight": 3, "min_seconds": 1.0, "max_seconds": 2.5 },
+    { "action": "hang_on_wall", "weight": 2, "min_seconds": 1.0, "max_seconds": 3.0 },
+    { "action": "jump_off_wall", "weight": 1, "min_seconds": 0.0, "max_seconds": 0.0 }
+  ],
+  "ceiling": [
+    { "action": "crawl_left", "weight": 3, "min_seconds": 1.0, "max_seconds": 2.5 },
+    { "action": "crawl_right", "weight": 3, "min_seconds": 1.0, "max_seconds": 2.5 },
+    { "action": "hang_on_ceiling", "weight": 2, "min_seconds": 1.0, "max_seconds": 3.0 },
+    { "action": "let_go", "weight": 1, "min_seconds": 0.0, "max_seconds": 0.0 }
+  ]
+}
