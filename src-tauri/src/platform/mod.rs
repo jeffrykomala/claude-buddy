@@ -98,14 +98,26 @@ pub trait ShellEnv {
     fn path(&self) -> String;
 }
 
-/// Starting a child process in its own process group and escalating signals
-/// to stop it (design §9.1, §10's cancel flow).
-///
-/// Declared now; implemented in Phase 2 (`platform/macos/process.rs`).
+/// A signal to send to a child process group, gentlest first.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Signal {
+    /// Ends a Claude turn cleanly.
+    Interrupt,
+    Terminate,
+    Kill,
+}
+
+/// Starting a child process in its own process group and signalling that
+/// group to stop it (design §9.1, §10's cancel flow). Signalling by group id
+/// (not by `Child`) lets one thread read a child's output while another
+/// cancels it.
 pub trait ProcessCtl {
+    /// Starts `command` as the leader of a new process group, so signalling
+    /// the group also reaches everything the child launches.
     fn spawn_group(&self, command: std::process::Command) -> std::io::Result<std::process::Child>;
-    fn interrupt(&self, child: &mut std::process::Child);
-    fn kill(&self, child: &mut std::process::Child);
+    /// Sends `signal` to every process in the group led by `pgid` (the
+    /// child's pid). Does nothing if the group is already gone.
+    fn signal_group(&self, pgid: u32, signal: Signal);
 }
 
 /// One-time OS setup for the pet window: no Dock icon, visible on every
@@ -113,6 +125,9 @@ pub trait ProcessCtl {
 /// (design §11).
 pub trait PetWindowOs {
     fn setup(&self, window: &tauri::WebviewWindow);
+    /// Hands keyboard focus back to the app the user was using before a
+    /// bubble took it for typing (design §11). Must run on the main thread.
+    fn release_focus(&self);
 }
 
 /// The current platform's implementation of every trait above.

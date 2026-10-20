@@ -1,4 +1,5 @@
-use objc2_app_kit::{NSFloatingWindowLevel, NSWindow, NSWindowCollectionBehavior};
+use objc2::MainThreadMarker;
+use objc2_app_kit::{NSApplication, NSFloatingWindowLevel, NSWindow, NSWindowCollectionBehavior};
 
 use crate::platform::PetWindowOs;
 
@@ -33,5 +34,13 @@ impl PetWindowOs for MacosPlatform {
                 | NSWindowCollectionBehavior::FullScreenAuxiliary,
         );
         ns_window.setLevel(NSFloatingWindowLevel);
+    }
+
+    /// Deactivating the app makes macOS give focus back to whichever app
+    /// was frontmost before it. Does nothing off the main thread.
+    fn release_focus(&self) {
+        if let Some(mtm) = MainThreadMarker::new() {
+            NSApplication::sharedApplication(mtm).deactivate();
+        }
     }
 }
