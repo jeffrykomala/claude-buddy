@@ -1,6 +1,36 @@
-/* The window is transparent and exactly the pet's size (design §11), so the
-   page itself must stay fully transparent too; sprite.ts (1.4) draws the
-   actual character on a canvas. */
+/* The window is transparent (design §11): it is exactly the pet's size until
+   a bubble opens, so the page itself must stay fully transparent too.
+   sprite.ts draws the character on the canvas; src/stage.ts positions the
+   pet, bubble, label and dot inside #stage. */
+
+:root {
+  --bubble-bg: #fffdf8;
+  --bubble-fg: #2b2623;
+  --bubble-muted: #7a716a;
+  --bubble-border: #e3d9cd;
+  --accent: #d9822b;
+  --accent-fg: #ffffff;
+  --danger: #c0392b;
+  --code-bg: #f1e9de;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bubble-bg: #2a2522;
+    --bubble-fg: #f4ede6;
+    --bubble-muted: #a79c92;
+    --bubble-border: #453d38;
+    --accent: #e8964a;
+    --accent-fg: #1d1917;
+    --danger: #ff7b6b;
+    --code-bg: #382f2a;
+  }
+}
+
+[hidden] {
+  display: none !important;
+}
+
 html,
 body {
   margin: 0;
@@ -10,12 +40,279 @@ body {
   overflow: hidden;
   user-select: none;
   -webkit-user-select: none;
+  font: 13px/1.4 -apple-system, BlinkMacSystemFont, "SF Pro Text", sans-serif;
+  color: var(--bubble-fg);
+}
+
+#stage {
+  position: relative;
+  width: 128px;
+  height: 128px;
 }
 
 #pet {
-  width: 100%;
-  height: 100%;
-  border-radius: 50%;
-  background: #c98a4b;
+  position: absolute;
+  left: 0;
+  top: 0;
+  display: block;
+  width: 128px;
+  height: 128px;
   cursor: grab;
+  /* Keep pixel art crisp when the canvas is scaled for Retina. */
+  image-rendering: pixelated;
+}
+
+/* ---------------------------------------------------------- over the pet */
+
+.activity {
+  position: absolute;
+  box-sizing: border-box;
+  text-align: center;
+  padding: 2px 8px;
+  border-radius: 10px;
+  background: var(--bubble-bg);
+  color: var(--bubble-fg);
+  border: 1px solid var(--bubble-border);
+  font-size: 11px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  pointer-events: none;
+}
+
+.dot {
+  position: absolute;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border-radius: 12px;
+  border: 1px solid var(--bubble-border);
+  background: var(--bubble-bg);
+  color: var(--bubble-fg);
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.dot.attention {
+  background: var(--accent);
+  color: var(--accent-fg);
+  animation: bounce 0.6s ease-in-out infinite alternate;
+}
+
+@keyframes bounce {
+  to {
+    transform: translateY(-4px);
+  }
+}
+
+/* ------------------------------------------------------------ the bubble */
+
+.bubble {
+  position: absolute;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  padding: 8px 10px 10px;
+  border-radius: 14px;
+  background: var(--bubble-bg);
+  border: 1px solid var(--bubble-border);
+  box-shadow: 0 4px 16px rgb(0 0 0 / 18%);
+  user-select: text;
+  -webkit-user-select: text;
+}
+
+.bubble-header {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  margin-bottom: 4px;
+}
+
+.bubble-title {
+  flex: 1;
+  font-weight: 600;
+  color: var(--bubble-muted);
+}
+
+.header-button {
+  width: 24px;
+  height: 22px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--bubble-muted);
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.header-button:hover {
+  background: var(--code-bg);
+}
+
+.bubble-notice {
+  margin-bottom: 4px;
+  color: var(--bubble-muted);
+  font-size: 12px;
+}
+
+.bubble-body {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.bubble-reply {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.bubble-reply p,
+.bubble-reply ul,
+.bubble-reply ol,
+.bubble-reply pre {
+  margin: 0 0 6px;
+}
+
+.bubble-reply ul,
+.bubble-reply ol {
+  padding-left: 18px;
+}
+
+.bubble-reply code {
+  padding: 0 3px;
+  border-radius: 4px;
+  background: var(--code-bg);
+  font: 12px ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+.bubble-reply pre {
+  padding: 6px 8px;
+  border-radius: 8px;
+  background: var(--code-bg);
+  overflow-x: auto;
+}
+
+.bubble-reply pre code {
+  padding: 0;
+}
+
+.bubble-error {
+  color: var(--danger);
+  white-space: pre-wrap;
+}
+
+.bubble-status,
+.bubble-footer {
+  color: var(--bubble-muted);
+  font-size: 11px;
+}
+
+.bubble-extras {
+  overflow-y: auto;
+}
+
+.bubble-approval {
+  padding: 6px 8px;
+  border-radius: 8px;
+  border: 1px solid var(--accent);
+}
+
+.approval-detail {
+  margin: 4px 0;
+  max-height: 80px;
+  overflow: auto;
+  white-space: pre-wrap;
+  word-break: break-word;
+  font: 11px ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+.approval-buttons {
+  display: flex;
+  gap: 6px;
+}
+
+.action,
+.picker-row {
+  border: 1px solid var(--bubble-border);
+  border-radius: 8px;
+  background: var(--code-bg);
+  color: var(--bubble-fg);
+  padding: 4px 10px;
+  cursor: pointer;
+}
+
+.action.allow,
+.action.send-new {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--accent-fg);
+}
+
+.picker-row {
+  display: block;
+  width: 100%;
+  margin-bottom: 4px;
+  text-align: left;
+}
+
+.picker-row .when {
+  color: var(--bubble-muted);
+  font-size: 11px;
+}
+
+.bubble-input-row {
+  display: flex;
+  gap: 6px;
+  margin-top: 6px;
+}
+
+.bubble-input {
+  flex: 1;
+  resize: none;
+  padding: 4px 8px;
+  border-radius: 8px;
+  border: 1px solid var(--bubble-border);
+  background: var(--bubble-bg);
+  color: var(--bubble-fg);
+  font: inherit;
+}
+
+.bubble-send {
+  border: 0;
+  border-radius: 8px;
+  padding: 0 12px;
+  background: var(--accent);
+  color: var(--accent-fg);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.bubble-send.stop {
+  background: var(--danger);
+}
+
+/* A little tail pointing at the pet. */
+.bubble::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  width: 10px;
+  height: 10px;
+  background: var(--bubble-bg);
+  border: 1px solid var(--bubble-border);
+  transform: translateX(-50%) rotate(45deg);
+}
+
+.bubble[data-side="above"]::after {
+  bottom: -6px;
+  border-top: 0;
+  border-left: 0;
+}
+
+.bubble[data-side="below"]::after {
+  top: -6px;
+  border-bottom: 0;
+  border-right: 0;
 }

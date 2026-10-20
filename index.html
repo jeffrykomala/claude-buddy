@@ -9,10 +9,10 @@
   </head>
 
   <body>
-    <!--
-      Temporary stand-in for the real sprite, which sprite.ts (1.4) draws on
-      a canvas with the actual character art and poses.
-    -->
-    <div id="pet"></div>
+    <!-- The window is the pet's size until a bubble opens; then Rust resizes
+         it and src/stage.ts places everything inside this stage. -->
+    <div id="stage">
+      <canvas id="pet"></canvas>
+    </div>
   </body>
 </html>
