@@ -5,7 +5,7 @@
 //! Ledges (other apps' window tops) are added in Phase 3
 //! (`physics/world.rs` visible-ledge subtraction).
 
-use crate::platform::Display;
+use crate::platform::{Display, Point};
 
 /// A horizontal surface (a floor or a ceiling): `y` is where the pet's
 /// anchor rests, valid for `x` in `[x0, x1]`.
@@ -109,6 +109,29 @@ impl World {
         self.walls
             .iter()
             .find(|w| (w.x - x).abs() <= epsilon && w.contains_y(y))
+    }
+}
+
+/// Whether `point` is within any display's full frame. `pet_window` uses
+/// this to notice when the pet has drifted off every screen (e.g. a display
+/// was unplugged) so it can respawn (design §9.1).
+pub fn is_on_any_display(point: Point, displays: &[Display]) -> bool {
+    displays.iter().any(|d| {
+        let f = d.frame;
+        point.x >= f.left() && point.x <= f.right() && point.y >= f.top() && point.y <= f.bottom()
+    })
+}
+
+/// The top-center of the main display's visible frame (the first display,
+/// matching `NSScreen`'s ordering), used to respawn a pet that's off every
+/// screen. Falls back to the origin if there are no displays at all.
+pub fn spawn_position(displays: &[Display]) -> Point {
+    match displays.first() {
+        Some(main) => Point {
+            x: main.visible_frame.left() + main.visible_frame.width / 2.0,
+            y: main.visible_frame.top(),
+        },
+        None => Point::default(),
     }
 }
 
@@ -245,6 +268,36 @@ mod tests {
         assert_eq!(world.floor_at(100.0).unwrap().y, 1080.0);
         assert_eq!(world.floor_at(2000.0).unwrap().y, 900.0);
         assert!(world.floor_at(5000.0).is_none());
+    }
+
+    #[test]
+    fn is_on_any_display_true_inside_a_frame_false_outside_all() {
+        let frame = rect(0.0, 0.0, 1920.0, 1080.0);
+        let displays = [display(frame, frame)];
+
+        assert!(is_on_any_display(Point { x: 500.0, y: 500.0 }, &displays));
+        assert!(!is_on_any_display(
+            Point {
+                x: 5000.0,
+                y: 500.0
+            },
+            &displays
+        ));
+        assert!(!is_on_any_display(Point { x: 500.0, y: -10.0 }, &displays));
+    }
+
+    #[test]
+    fn spawn_position_is_top_center_of_the_first_display() {
+        let main = rect(0.0, 0.0, 1920.0, 1000.0);
+        let secondary = rect(1920.0, 0.0, 1280.0, 800.0);
+        let displays = [display(main, main), display(secondary, secondary)];
+
+        assert_eq!(spawn_position(&displays), Point { x: 960.0, y: 0.0 });
+    }
+
+    #[test]
+    fn spawn_position_falls_back_to_the_origin_with_no_displays() {
+        assert_eq!(spawn_position(&[]), Point::default());
     }
 
     #[test]

@@ -5,6 +5,10 @@
 /// (design §6.2).
 pub const WORLD_REFRESH_SECONDS: f64 = 0.25;
 
+/// The pet window's fixed size until real sprites (with their own per-pose
+/// dimensions) land in 1.4.
+pub const PET_SIZE_PT: f64 = 128.0;
+
 /// The physics tick rate (design §6.3).
 pub const TICK_HZ: f64 = 60.0;
 
