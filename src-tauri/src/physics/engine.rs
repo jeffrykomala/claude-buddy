@@ -10,7 +10,8 @@ use crate::platform::Point;
 
 /// Which way the pet is facing. Sprites face left by default; facing right
 /// mirrors them (design §9.2).
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "snake_case")]
 pub enum Facing {
     Left,
     Right,

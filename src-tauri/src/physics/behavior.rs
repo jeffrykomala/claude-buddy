@@ -236,6 +236,46 @@ pub fn apply(state: &State, action: Action, duration: f64, rng_state: u64) -> St
     }
 }
 
+/// What the pet does instead of wandering while wandering is paused: stay
+/// put, in the stillest pose its surface allows. `None` in the air or while
+/// held, where physics (not behavior) is in charge.
+pub fn resting_action(surface: Surface) -> Option<Action> {
+    match surface {
+        Surface::Floor => Some(Action::Stand),
+        Surface::Wall => Some(Action::HangOnWall),
+        Surface::Ceiling => Some(Action::HangOnCeiling),
+        Surface::Air | Surface::Dragged => None,
+    }
+}
+
+/// Poses that already look held still, so pausing leaves them alone.
+fn is_at_rest(pose: Pose) -> bool {
+    matches!(
+        pose,
+        Pose::Stand
+            | Pose::Sit
+            | Pose::SitDangle
+            | Pose::Sleep
+            | Pose::WallHang
+            | Pose::CeilingHang
+    )
+}
+
+/// The pet's next state while wandering is paused (design §9.1): anything it
+/// was doing on the move (walking, climbing, crawling) becomes its resting
+/// pose; poses that are already still, and landing/splat animations that are
+/// still playing out, are left as they are. Gravity, grabbing and throwing
+/// are unaffected because the engine handles those, not behaviors.
+pub fn hold_still(state: &State) -> State {
+    let is_landing = matches!(state.pose, Pose::Land | Pose::Splat) && state.behavior_timer > 0.0;
+    match resting_action(state.surface) {
+        Some(action) if !is_landing && !is_at_rest(state.pose) => {
+            apply(state, action, 0.0, state.rng_state)
+        }
+        _ => *state,
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -250,6 +290,112 @@ mod tests {
             pose: Pose::Stand,
             behavior_timer: 0.0,
             rng_state: 1,
+        }
+    }
+
+    fn moving_state(surface: Surface, pose: Pose, velocity: Point) -> State {
+        State {
+            pose,
+            velocity,
+            behavior_timer: 2.0,
+            ..idle_state(surface)
+        }
+    }
+
+    #[test]
+    fn resting_action_is_the_stillest_pose_for_each_surface() {
+        assert_eq!(resting_action(Surface::Floor), Some(Action::Stand));
+        assert_eq!(resting_action(Surface::Wall), Some(Action::HangOnWall));
+        assert_eq!(
+            resting_action(Surface::Ceiling),
+            Some(Action::HangOnCeiling)
+        );
+        assert_eq!(resting_action(Surface::Air), None);
+        assert_eq!(resting_action(Surface::Dragged), None);
+    }
+
+    #[test]
+    fn hold_still_stops_a_walking_pet() {
+        let walking = moving_state(Surface::Floor, Pose::Walk, Point { x: -60.0, y: 0.0 });
+
+        let held = hold_still(&walking);
+
+        assert_eq!(held.pose, Pose::Stand);
+        assert_eq!(held.velocity, Point { x: 0.0, y: 0.0 });
+        assert_eq!(held.position, walking.position);
+        assert_eq!(held.facing, walking.facing);
+    }
+
+    #[test]
+    fn hold_still_stops_a_running_pet() {
+        let running = moving_state(Surface::Floor, Pose::Run, Point { x: 150.0, y: 0.0 });
+
+        assert_eq!(hold_still(&running).pose, Pose::Stand);
+    }
+
+    #[test]
+    fn hold_still_stops_a_climbing_pet_on_the_wall() {
+        let climbing = moving_state(Surface::Wall, Pose::Climb, Point { x: 0.0, y: -50.0 });
+
+        let held = hold_still(&climbing);
+
+        assert_eq!(held.pose, Pose::WallHang);
+        assert_eq!(held.velocity, Point { x: 0.0, y: 0.0 });
+    }
+
+    #[test]
+    fn hold_still_stops_a_crawling_pet_on_the_ceiling() {
+        let crawling = moving_state(
+            Surface::Ceiling,
+            Pose::CeilingCrawl,
+            Point { x: 50.0, y: 0.0 },
+        );
+
+        let held = hold_still(&crawling);
+
+        assert_eq!(held.pose, Pose::CeilingHang);
+        assert_eq!(held.velocity, Point { x: 0.0, y: 0.0 });
+    }
+
+    #[test]
+    fn hold_still_leaves_poses_that_are_already_still_alone() {
+        for pose in [Pose::Stand, Pose::Sit, Pose::Sleep, Pose::SitDangle] {
+            let resting = moving_state(Surface::Floor, pose, Point { x: 0.0, y: 0.0 });
+
+            assert_eq!(hold_still(&resting), resting, "{pose:?} should be kept");
+        }
+    }
+
+    #[test]
+    fn hold_still_lets_a_landing_play_out_then_stands() {
+        let landing = moving_state(Surface::Floor, Pose::Land, Point { x: 0.0, y: 0.0 });
+        let landed = State {
+            behavior_timer: 0.0,
+            ..landing
+        };
+
+        assert_eq!(hold_still(&landing), landing);
+        assert_eq!(hold_still(&landed).pose, Pose::Stand);
+    }
+
+    #[test]
+    fn hold_still_lets_a_splat_play_out_then_stands() {
+        let splatted = moving_state(Surface::Floor, Pose::Splat, Point { x: 0.0, y: 0.0 });
+        let recovered = State {
+            behavior_timer: 0.0,
+            ..splatted
+        };
+
+        assert_eq!(hold_still(&splatted), splatted);
+        assert_eq!(hold_still(&recovered).pose, Pose::Stand);
+    }
+
+    #[test]
+    fn hold_still_does_not_interfere_with_falling_or_being_held() {
+        for surface in [Surface::Air, Surface::Dragged] {
+            let state = moving_state(surface, Pose::Fall, Point { x: 0.0, y: 400.0 });
+
+            assert_eq!(hold_still(&state), state);
         }
     }
 
