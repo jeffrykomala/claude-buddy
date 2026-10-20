@@ -25,3 +25,4 @@ dist-ssr
 
 # Test coverage output
 coverage
+.buddy-dev.log
